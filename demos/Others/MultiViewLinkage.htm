@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>地图视图联动</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+    <script src="../../libs/ol/ol.js" type="text/javascript"></script>
+<!--    <script src="../../libs/ol/ol-debug.js" type="text/javascript"></script>-->
+    <style type="text/css">
+        body,html,div,ul,li,iframe,p,img{
+            border:none;padding:0;margin:0;
+            font-size:14px;
+            font-family:"微软雅黑";
+        }
+        .container{
+            float:left;
+            width:32%;
+            height:570px;
+            margin:0 5px;
+        }        
+        .map{
+            float:left;
+            width:100%;
+            height:100%;
+            border:1px dashed red;
+        }
+    </style>
+
+</head>
+<body>
+    <div class="container">
+        <lable>Canvas</lable>
+        <div id="canvasMap" class="map" ></div>
+    </div>
+    <div class="container">
+        <lable>DOM</lable>
+        <div id="domMap" class="map" ></div>
+    </div>
+    <div class="container">
+        <lable>WebGL</lable>
+        <div id="webglMap" class="map" >
+            <div id="no-webgl" class="alert alert-error" style="display: none">
+                 This map requires a browser that supports <a href="http://get.webgl.org/">WebGL</a>.
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+
+        var canvasMap = new ol.Map({
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.MapQuest({ layer: 'osm' })
+                })
+            ],
+            target: 'canvasMap', //地图容器div的ID
+            view: new ol.View({
+                center: [12723048, 3575638], //地图初始中心点
+                minZoom: 2,
+                zoom: 2
+            })
+        });
+
+        var domMap = new ol.Map({
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.MapQuest({ layer: 'sat' })
+                })
+            ],
+            renderer: 'dom',
+            target: 'domMap',
+            view: canvasMap.getView()
+        });
+
+        if (ol.has.WEBGL) {
+            var webglMap = new ol.Map({
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.OSM()
+                    })
+                ],
+                renderer: 'webgl',
+                target: 'webglMap',
+                view: canvasMap.getView()
+            });
+        } else {
+            var info = document.getElementById('no-webgl');
+            /**
+            * display error message
+            */
+            info.style.display = '';
+        }
+    </script>
+</body>
+</html>

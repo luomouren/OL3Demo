@@ -1,0 +1,118 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>OpenLayers3示例</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- 强制360浏览器用WebKit内核 -->
+	<meta name="renderer" content="webkit" />
+	<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+    <link type="text/css" rel="stylesheet" href="css/base.css" />
+    <!-- 开源库jQuery -->
+    <script type="text/javascript" src="libs/jquery.js"></script>
+    <!-- 第三方插件库（复制功能插件） -->
+    <script type="text/javascript" src="libs/ZeroClipboard/ZeroClipboard.js"></script>
+    <!-- 源码编辑器样式文件与插件库 -->
+    <link type="text/css" rel="stylesheet" href="libs/codemirror/lib/codemirror.css" />
+    <script type="text/javascript" src="libs/codemirror/lib/codemirror.js"></script>   
+    <script type="text/javascript" src="libs/codemirror/mode/xml/xml.js"></script>
+    <script type="text/javascript" src="libs/codemirror/mode/javascript/javascript.js"></script>
+    <script type="text/javascript" src="libs/codemirror/mode/css/css.js"></script>
+    <script type="text/javascript" src="libs/codemirror/mode/htmlmixed/htmlmixed.js"></script>
+    <script type="text/javascript" src="libs/codemirror/addon/edit/matchbrackets.js"></script>
+    <!-- 系统首页功能库 -->
+    <script type="text/javascript" src="js/init.js"></script>
+</head>
+<body >
+    <div id="header">
+      <a class="logo">
+        <img src="images/logo.png"/>
+        <span>OpenLayers 3 示例集锦</span>    
+      </a>
+      <a href="http://www.openlayers.cn/forum.php" target="_blank" class="help"><span>i</span>论坛求助</a>
+      <a href="http://openlayers.org/en/master/apidoc/" target="_blank" class="help"><span>a</span>OL3 API</a>         
+    </div>
+    <div id="content">
+        <div class="leftsidebar_box">
+		    <div class="line"></div>
+		    <dl class="control">
+			    <dt class="first_dt" >地图控件<img src="images/left/select_xl01.png"/></dt>
+			    <dd onclick="setCore('ZoomSlider','Controls')">导航控件</dd>
+			    <dd onclick="setCore('Operation','Controls')" >地图操作</dd>
+			    <dd onclick="setCore('LayerControl','Controls')" >图层控件</dd>
+			    <dd onclick="setCore('MousePosition','Controls')">鼠标位置</dd>
+                <dd onclick="setCore('ScaleLine','Controls')">比例尺</dd>
+                <dd onclick="setCore('OverviewMap','Controls')">鹰  眼</dd>
+                <dd onclick="setCore('FullScreen','Controls')">全屏显示</dd>
+                <dd onclick="setCore('CanvasTiles','Controls')">网格信息</dd>
+                <dd onclick="setCore('LayerSpy','Controls')">图层探查</dd>
+                <dd onclick="setCore('Measure','Controls')">测量控件</dd>
+                <dd onclick="setCore('Animation','Controls')">动画效果</dd>
+		    </dl>
+		    <dl class="data">
+			    <dt>多源数据<img  src="images/left/select_xl01.png"/></dt>
+			    <dd onclick="setCore('LoadBasicMaps','MultiData')">基础数据</dd>
+                <dd onclick="setCore('LoadOpenData','MultiData')">开放数据</dd>
+			    <dd onclick="setCore('LoadPublicMaps','MultiData')">公共地图</dd>
+                <dd onclick="setCore('LoadTiandituMap','MultiData')">公共地图(天地图)</dd>
+			    <dd onclick="setCore('OverLayerMaps','MultiData')">多源数据叠加</dd>
+			    <dd onclick="setCore('MapExport','MultiData')">地图导出</dd>
+		    </dl>	
+		    <dl class="drawing">
+			    <dt>图形绘制<img src="images/left/select_xl01.png"/></dt>
+			    <dd onclick="setCore('DrawFeatures','Drawing')">绘制几何图形</dd>
+			    <dd onclick="setCore('FeaturesStyle','Drawing')">图形样式编辑</dd>
+			    <dd onclick="setCore('ModifyFeatures','Drawing')">图形交互编辑</dd>
+			    <dd onclick="setCore('SaveFeatures','Drawing')">图形信息保存</dd>
+		    </dl>
+		    <dl class="ogc">
+			    <dt>OGC资源<img src="images/left/select_xl01.png"/></dt>
+			    <dd onclick="setCore('LoadWMTSMap','OGC')">加载WMTS</dd>
+			    <dd onclick="setCore('LoadWMSMap','OGC')">加载WMS</dd>
+                <dd onclick="setCore('LoadWCSMap','OGC')">加载WCS</dd>
+			    <dd onclick="setCore('LoadWFSFeatrue','OGC')">加载WFS</dd>
+                <dd onclick="setCore('')">WFS操作</dd>
+		    </dl>
+		    <dl class="label">
+			    <dt>地图标注<img src="images/left/select_xl01.png"/></dt>
+			    <dd onclick="setCore('AddLabels','Labels')">Marker</dd>
+                <dd onclick="setCore('AddPopup','Labels')">Popup</dd>
+                <dd onclick="setCore('AddClusterLabels','Labels')">聚合标注</dd>
+		    </dl>
+		    <dl class="others">
+			    <dt>高级功能<img src="images/left/select_xl01.png"/></dt>
+			    <dd onclick="setCore('ProjectionTransformation','Others')">投影转换</dd>
+			    <dd onclick="setCore('MultiViewLinkage','Others')">视图联动</dd>
+			    <dd onclick="setCore('Heatmap','Others')">热点图</dd>
+			    <dd onclick="setCore('CreatCharts','Others')">统计图</dd>
+			    <dd onclick="setCore('HotSpots','Others')">热区功能</dd>
+                <dd onclick="setCore('AddPOI','Others')">POI标注</dd>
+			    <dd onclick="setCore('MilitaryPlotting','Others')">标绘功能</dd>
+			    <dd onclick="setCore('Geolocation','Others')">定位导航</dd>
+                <dd onclick="setCore('SimulateGeolocation','Others')">模拟导航</dd>
+		    </dl>
+	    </div>
+        <div id="code_wrapper">
+            <div id="code_arrow" class="go_back">
+                <span title="显示代码">›</span>
+                <p title="隐藏代码">‹</p>
+            </div>
+            <div id="code_core">
+                <div class="code_head">
+<!--                	<a id="code_restore" href="javascript:void(0);">还原</a>
+				    <a id="code_run" href="javascript:void(0);">运行</a>-->
+                    <a id="code_copy" class="" href="javascript:void(0);">复制</a>
+                    源代码编辑器
+                </div>
+                <div class="code_body">
+                    <textarea id="codes" rows="10" cols="30" name="codes" > </textarea>
+                </div>
+            </div>
+
+        </div>
+        <div  class="iframe_wrapper" >
+            <iframe id="container_iframe" name="container_iframe"  scrolling="no" ></iframe>
+        </div>
+    </div>
+</body>
+</html>

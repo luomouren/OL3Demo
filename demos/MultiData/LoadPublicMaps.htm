@@ -1,0 +1,257 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>加载第三方公共地图（OSM/MapQuest/Bing/Baidu等）</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+<!--    <script src="../../libs/ol/ol.js" type="text/javascript"></script>-->
+    <script src="../../libs/ol/ol-debug.js" type="text/javascript"></script>
+    <!--  引入第三方插件库 -->
+    <script src="../../libs/jquery-1.11.2.min.js" type="text/javascript"></script>
+    <style type="text/css">
+        body,html,div,ul,li,iframe,p,img{
+            border:none;padding:0;margin:0;
+        }
+        #map{
+            width:100%;
+            height:550px;
+        }
+        #menu{
+            width:100%;
+            height:20px;         
+            padding:5px 0px;
+            font-size:14px;
+            font-family:"微软雅黑";
+            left:10px;    
+        }
+        #menu ul{
+            float:left;
+        }
+        #menu ul li{
+            float:left;
+            list-style:none;
+            margin:0px 15px; 
+        }
+        #mouse-position{
+            float:right;
+            margin: 0px 15px; 
+        }
+    </style>
+</head>
+
+<body>
+    <div id="menu">
+        <ul>
+            <li >
+                <label class="checkbox" ><input type="radio" name="maps" value="osm"/>OpenSteetMap</label>
+            </li>
+            <li>
+                <label class="checkbox" ><input type="radio" name="maps" value="MapQuest"/>MapQuest地图</label>
+            </li>
+            <li>
+                <label class="checkbox" ><input type="radio" name="maps" value="bing"/>Bing地图</label>
+                <select id="bingType">
+                    <option value="Road" selected="selected">Road</option>
+                    <option value="Aerial">Aerial</option>
+                    <option value="AerialWithLabels">Aerial with labels</option>
+                    <option value="collinsBart">Collins Bart</option>
+                    <option value="ordnanceSurvey">Ordnance Survey</option>
+                </select>
+            </li>
+            <li>
+                <label class="checkbox" ><input type="radio" name="maps" value="baidu"/>Baidu地图</label>
+            </li>
+        </ul>
+        <div id="mouse-position" class="custom-mouse-position" ></div>
+    </div>   
+    <div id="map">
+    </div>
+    <script type="text/javascript">
+        var center; //当前中心点
+        var zoom; //当前缩放级数
+        var osmLayers; //OSM图层
+        var osmSource; //OSM数据源
+        var bingLayers;//Bing地图图层
+        var bingSource; //Bing地图数据源
+        var bingKey = "Ak-dzM4wZjSqTlzveKz5u0d4IQ4bRzVI309GxmkgSVr1ewS6iPSrOvOKhA-CJlm3"; //Bing地图key
+        var baiduLayer; //百度地图图层
+        var baiduSource; //百度地图数据源
+        var MapQuestLayer; //MapQuest图层
+        var MapQuestSource; //MapQuest地图数据源
+
+        var view = new ol.View({
+            projection: ol.proj.get('EPSG:3857'),
+            center: [0, 0], //地图初始中心点
+            zoom: 2 //地图初始显示级别
+        });
+        //实例化Map对象加载地图
+        var map = new ol.Map({
+            target: 'map', //地图容器div的ID
+            //地图容器中加载的图层
+            layers: null,
+            //地图视图设置
+            view: view
+        });
+        //添加坐标
+        var mousePositionControl = new ol.control.MousePosition({
+            coordinateFormat: ol.coordinate.createStringXY(2),
+            className: 'custom-mouse-position',
+            target: document.getElementById('mouse-position'),
+            undefinedHTML: '&nbsp;'
+        });
+        map.addControl(mousePositionControl);
+
+        $("input[type='radio'][name='maps']").attr("checked", false); //所有单选按钮都不选中
+        $("input[type='radio'][name='maps']").get(0).checked = true; //选中第一个
+        loadMap($("input[name='maps']:checked").val()); //默认加载选中地图
+
+        $("input[name='maps']").each(function () {//循环绑定事件   
+            this.onclick = function () {
+                if (this.checked) {
+                    var checkedVal = $("input[name='maps']:checked").val();
+                    loadMap(checkedVal);//根据当前地图类型加载地图
+                }
+            }
+        });
+        /**
+        * 根据选择的第三方地图类型加载地图数据
+        * @param {string} mapType 第三方地图类型参数
+        */
+        function loadMap(mapType) {
+            //移除当前已有图层
+            var cLayers = map.getLayers();
+            if (cLayers != null) { 
+                for (var i = 0; i < cLayers.length; i++) {
+                    map.removeLayer(cLayers[i]);
+                }
+            }
+            //加载OSM地图
+            if (mapType == "osm") {
+                osmSource = new ol.source.OSM();
+                osmLayers = new ol.layer.Tile({
+                    source: osmSource
+                });
+                map.addLayer(osmLayers); //添加OSM地图图层   
+                setMapView([0, 0], 2);
+            }
+            //加载MapQuest地图
+            else if (mapType == "MapQuest") {
+                MapQuestSource = new ol.source.MapQuest({ layer: 'osm' });
+                MapQuestLayer = new ol.layer.Tile({
+                    source: MapQuestSource
+                });
+                map.addLayer(MapQuestLayer); //添加MapQuest地图图层   
+                setMapView([0, 0], 4); //设置地图视图中心点与缩放级数
+            }
+            //加载Bing地图
+            else if (mapType == "bing") {
+                var select = document.getElementById('bingType');
+                select.removeEventListener('change', onChange); //移除地图类型选项的事件监听
+                //实例化数据源与图层
+                bingSource = new ol.source.BingMaps({
+                    key: bingKey,
+                    imagerySet: select.value
+                });
+                bingLayers = new ol.layer.Tile({
+                    source: bingSource
+                });
+                map.addLayer(bingLayers); //添加Bing地图图层   
+                setMapView([-6655.5402445057125, 6709968.258934638], 13);
+                select.addEventListener('change', onChange); //添加地图类型选项的事件监听
+            }
+            //加载百度地图
+            else if (mapType == "baidu") {
+                loadBaiduMap(); //加载百度地图
+                setMapView([0, 0], 4);//设置地图视图中心点与缩放级数
+            }
+        }
+
+        //Bing地图数据类型切换处理函数
+        function onChange() {
+            var bingStyle = document.getElementById('bingType').value; //当前选中Bing地图数据类型
+            //重新实例化一个Bing地图的数据源
+            bingSource = new ol.source.BingMaps({
+                key:bingKey,
+                imagerySet: bingStyle
+            });
+            //通过setSource重新加载数据源到图层中
+            if (bingLayers != null) { 
+                bingLayers.setSource(null);
+                bingLayers.setSource(bingSource);
+            }
+        }
+
+        function loadBaiduMap() {
+            //数据源信息
+            var attribution = new ol.Attribution({
+                html: 'Copyright:&copy; 2015 Baidu, i-cubed, GeoEye'
+            });
+            //地图范围
+            var extent = [-20037508.34, -20037508.34, 20037508.34, 20037508.34];
+            //瓦片大小
+            var tileSize = 256;
+            //瓦片参数原点
+            var origin = [0, 0];
+            //百度地图在线服务地址
+            var urlTemplate = "http://online2.map.bdimg.com/tile/?qt=tile&x=" + '{x}' + "&y=" + '{y}' + "&z=" + '{z}' + "&styles=pl&udt=20141219&scaler=1";
+            //通过范围计算得到地图分辨率数组resolutions
+            var resolutions = getResolutions(extent, tileSize);
+            //实例化百度地图数据源
+            baiduSource = new ol.source.TileImage({
+                attributions: [attribution],
+                tileUrlFunction: function (tileCoord, pixelRatio, projection) {
+                    //判断返回的当前级数的行号和列号是否包含在整个地图范围内
+                    if (this.tileGrid != null) {
+                        var tileRange = this.tileGrid.getTileRangeForExtentAndZ(extent, tileCoord[0], tileRange);
+                        if (!tileRange.contains(tileCoord)) {
+                            return;
+                        }
+                    }
+                    var z = tileCoord[0];
+                    var x = tileCoord[1];
+                    var y = tileCoord[2];
+                    return urlTemplate.replace('{z}', z.toString())
+                        .replace('{y}', y.toString())
+                        .replace('{x}', x.toString());
+                },
+                projection: ol.proj.get('EPSG:3857'), //投影坐标系
+                tileGrid: new ol.tilegrid.TileGrid({
+                    origin: origin, //原点，数组类型，如[0,0],
+                    resolutions: resolutions, //分辨率数组
+                    tileSize: tileSize //瓦片图片大小
+                })
+            });
+            //实例化百度地图瓦片图层
+            baiduLayer = new ol.layer.Tile({
+                source: baiduSource
+            });
+            map.addLayer(baiduLayer); //添加Baidu地图图层   
+        }
+
+        //通过范围计算得到地图分辨率数组resolutions
+        function getResolutions(extent, tileSize) {
+            var width = ol.extent.getWidth(extent);
+            var height = ol.extent.getHeight(extent);
+            var maxResolution = (width <= height ? height : width) / (tileSize);//最大分辨率
+            var resolutions = new Array(16);
+            var z;
+            for (var z = 0; z < 16; ++z) {
+                resolutions[z] = maxResolution / Math.pow(2, z);
+            }
+            return resolutions; //返回分辩率数组resolutions
+        }
+
+        /**
+        * 重新设置地图视图
+        * @param {ol.Coordinate} center 中心点
+        * @param {number} zoom 缩放级数
+        */
+        function setMapView(center, zoom) {
+            var view = map.getView(); //获取地图视图
+            view.setCenter(center); //平移地图
+            view.setZoom(zoom); //地图缩放
+        }
+   </script>
+</body>
+</html>
+

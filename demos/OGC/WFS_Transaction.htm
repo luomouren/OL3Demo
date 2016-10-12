@@ -1,0 +1,232 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>WFS Transaction接口的要素增删改操作（MapGIS WFS）</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+<!--    <script src="../../libs/ol/ol.js" type="text/javascript"></script>-->
+    <script src="../../libs/ol/ol-debug.js" type="text/javascript"></script>
+    <!--  引入第三方插件库 -->
+    <script src="../../libs/jquery-1.11.2.min.js" type="text/javascript"></script>
+        <style type="text/css">
+        body,html,div,ul,li,iframe,p,img{
+            border:none;padding:0;margin:0;
+        }
+        #map{
+            width:100%;
+            height:570px;
+        }
+        #menu{
+            width:100%;
+            height:20px;         
+            padding:5px 0px;
+            font-size:14px;
+            font-family:"微软雅黑";
+            left:10px;    
+        }
+        #menu ul{
+            float:left;
+        }
+        #menu ul li{
+            float:left;
+            list-style:none;
+            margin:0px 15px; 
+        }
+    </style>
+</head>
+<body>
+     <div id="menu">
+        <ul>
+            <li >
+                <label class="checkbox" ><input type="radio" name="operation" value="insert"/>基于MapGIS WFS添加要素</label>
+            </li>
+            <li >
+                <label class="checkbox" ><input type="radio" name="operation" value="update"/>基于MapGIS WFS更新要素</label>
+            </li>
+            <li >
+                <label class="checkbox" ><input type="radio" name="operation" value="delete"/>基于MapGIS WFS删除要素</label>
+            </li>
+        </ul>
+    </div> 
+    <div id="map" > 
+    </div>
+    <script type="text/javascript">
+        var wfsLayer; //WFS图层数据
+        var vectorSource; // 矢量图层数据源
+        var projection = ol.proj.get('EPSG:4326');//投影坐标系
+        var extent = [-180, -90, 180, 90];
+        vectorSource = new ol.source.Vector();
+
+        // 创建ol.format.WFS对象，用来解析 WFS GetFeature接口的响应结果
+        var wfsFormat = new ol.format.WFS();
+
+//        // 创建ol.format.GeoJSON对象，用来解析 WFS GetFeature接口的响应结果
+//        var geojsonFormat = new ol.format.GeoJSON();
+
+
+        //实例化矢量图层数据源对象（使用ajax请求WFS服务）
+//        vectorSource = new ol.source.Vector({
+//            loader: function (extent, resolution, projection) {
+//                //WFS的GetFeature接口访问地址，指定服务回调方法
+//                var url = 'http://demo.boundlessgeo.com/geoserver/wfs?service=WFS&' +
+//                    'version=1.1.0&request=GetFeature&typename=osm:water_areas&' +
+//                    'outputFormat=text/javascript&format_options=callback:loadFeatures' +
+//                    '&srsname=EPSG:3857&bbox=' + extent.join(',') + ',EPSG:3857';
+//                // use jsonp: false to prevent jQuery from adding the "callback"
+//                // parameter to the URL
+//                //使用jQuery的ajax方法进行请求，使用jsonp方式，设置jsonp参数为false防止jQuery添加“callback”回调方法
+//                $.ajax({ url: url, dataType: 'jsonp', jsonp: false });
+//            },
+//            //加载策略设置
+//            strategy: ol.loadingstrategy.tile(ol.tilegrid.createXYZ({
+//                maxZoom: 19
+//            }))
+//        });
+
+        function loadWFSFeatures(extent, resolution, projection) {
+            
+//            var url = 'http://127.0.0.1:6163/igs/rest/ogc/layer/worldLayer/WFSServer?service=wfs&' +
+//                    'version=1.1.0&request=GetFeature&typename=worldLayer:世界河流';
+//            $.ajax({
+//                url: url,
+//                //                dataType: 'jsonp', //为其他类型不发送请求
+//                dataType: 'json', 
+//                success: function (data) {
+//                    alert(data);
+//                    vectorSource.addFeatures(wfsFormat.readFeatures(data));
+//                    map.addLayer(wfsLayer); //加载WFS服务图层数据
+//                }
+//            });
+
+            var url = 'http://127.0.0.1:6163/igs/rest/ogc/layer/worldLayer/WFSServer?service=wfs&' +
+                    'version=1.1.0&request=GetFeature&typename=worldLayer:世界河流';
+            $.ajax({ url: url, dataType: 'jsonp', jsonpCallback: 'success_jsonpCallback',jsonp: false });
+        }
+
+        /**
+        *  WFS 的回调方法（callback）
+        * @param {Object} response 响应对象
+        */
+        function success_jsonpCallback(response) {
+            alert(response);
+            //解析WFS GetFeature接口的响应结果，将解析得到的矢量要素添加到数据源中
+            vectorSource.addFeatures(wfsFormat.readFeatures(response));
+            map.addLayer(wfsLayer); //加载WFS服务图层数据
+        };
+
+
+
+
+
+ 
+//        vectorSource = new ol.source.Vector({
+//            loader: function (extent, resolution, projection) {                
+                                         
+                //WFS的GetFeature接口访问地址，指定服务回调方法
+                //                var url = 'http://127.0.0.1:6163/igs/rest/ogc/layer/worldLayer/WFSServer?service=wfs&' +
+                //                    'version=1.1.0&request=GetFeature&typename=worldLayer:世界河流&' +
+                //                    'outputFormat=text/javascript&format_options=callback:loadFeatures' +
+                //                    '&srsname=EPSG:4326&bbox=' + extent.join(',') + ',EPSG:4326';
+
+//                var url = 'http://127.0.0.1:6163/igs/rest/ogc/layer/worldLayer/WFSServer?service=wfs&' +
+//                    'version=1.1.0&request=GetFeature&typename=worldLayer:世界河流'
+//                    + '&callback=loadFeatures';
+
+                // use jsonp: false to prevent jQuery from adding the "callback"
+                // parameter to the URL
+                //使用jQuery的ajax方法进行请求，使用jsonp方式，设置jsonp参数为false防止jQuery添加“callback”回调方法
+                // $.ajax({ url: url, dataType: 'jsonp', jsonp: false });
+
+//                $.ajax({
+//                    url: url,
+//                    dataType: 'jsonp',
+//                    success: function (data) {
+//                        alert(data);
+//                        vectorSource.addFeatures(wfsFormat.readFeatures(data));
+//                    }
+//                });
+//            },
+//            //加载策略设置
+//            strategy: ol.loadingstrategy.tile(ol.tilegrid.createXYZ({
+//                maxZoom: 19
+//            }))
+//        });
+
+
+//        /**
+//        *  WFS 的回调方法（callback）
+//        * @param {Object} response 响应对象
+//        */
+//        window.loadFeatures = function (response) {
+//            alert(response);
+//            //解析WFS GetFeature接口的响应结果，将解析得到的矢量要素添加到数据源中
+//            vectorSource.addFeatures(wfsFormat.readFeatures(response));
+//        };
+
+
+        //实例化ol.layer.Vector对象加载WFS要素
+        wfsLayer = new ol.layer.Vector({
+            //数据源（WFS的矢量要素）
+            source: vectorSource,
+            //矢量要素样式
+            style: new ol.style.Style({
+                fill: new ol.style.Fill({
+                    color: 'rgba(255, 255, 255, 0.5)'
+                }),
+                stroke: new ol.style.Stroke({
+                    color: '#0099ff',
+                    width: 2
+                }),
+                image: new ol.style.Circle({
+                    radius: 7,
+                    fill: new ol.style.Fill({
+                        color: '#0099ff'
+                    })
+                })
+            })
+        });
+
+
+
+        //创建WMS图层对象（ol.layer.Image，ol.source.ImageWMS）
+       var wmsLayer = new ol.layer.Image({
+            extent: [-180, -90, 180, 90], //数据范围
+            source: new ol.source.ImageWMS({
+                url: 'http://192.168.22.63:6163/igs/rest/ogc/doc/worldMap/WMSServer', //WMS服务基地址（MapGIS WMS）
+                params: { 'LAYERS': 'worldMap:海洋陆地,国界,湖泊,首都' } //图层参数
+            })
+        });  
+
+        //创建Map对象加载地图,默认底图加载WMS地图
+        var map = new ol.Map({
+            layers: [
+                  wmsLayer
+            ],
+            target: 'map', //地图容器div的ID
+            controls: ol.control.defaults({
+                attributionOptions: /** @type {olx.control.AttributionOptions} */({
+                    collapsible: false
+                })
+            }),
+            view: new ol.View({
+                projection: projection,
+                center: [0, 0],
+                maxZoom: 19,
+                zoom: 2
+            })
+        });
+
+        //通过单选框控制WFS的要素操作
+        $("input[name='operation']")[0].onclick = function () {
+            if ($("input[name='operation']")[0].checked) {
+                loadWFSFeatures();
+               
+            }
+            else {
+                map.removeLayer(wfsLayer); //移除WFS服务图层数据
+            }
+        };
+
+    </script>
+</body>
+</html>

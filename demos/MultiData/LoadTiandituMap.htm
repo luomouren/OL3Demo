@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>加载第三方公共地图（TianDiTu）</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+<!--    <script src="../../libs/ol/ol.js" type="text/javascript"></script>-->
+  <script src="../../libs/ol/ol-debug.js" type="text/javascript"></script>
+    <!--  引入第三方插件库 -->
+    <script src="../../libs/jquery-1.11.2.min.js" type="text/javascript"></script>
+    <style type="text/css">
+        body,html,div,ul,li,iframe,p,img{
+            border:none;padding:0;margin:0;
+        }
+        #map{
+            width:100%;
+            height:550px;
+        }
+        #menu{
+            width:100%;
+            height:20px;         
+            padding:5px 0px;
+            font-size:14px;
+            font-family:"微软雅黑";
+            left:10px;    
+        }
+        #menu ul{
+            float:left;
+        }
+        #menu ul li{
+            float:left;
+            list-style:none;
+            margin:0px 15px; 
+        }
+        #mouse-position{
+            float:right;
+            margin: 0px 15px; 
+        }
+    </style>
+</head>
+
+<body>
+    <div id="menu">
+        <ul>
+            <li>
+                <label class="checkbox" ><input type="radio" name="maps" value="tianditu"/>天地图</label>
+                <select id="tiandituType">
+                    <option value="vec" selected="selected">矢量</option>                 
+                    <option value="cva">矢量注记</option>
+                    <option value="img">影像</option>
+                    <option value="cia">影像注记</option>
+                </select>
+            </li>
+        </ul>
+        <div id="mouse-position" class="custom-mouse-position" ></div>
+    </div>  
+    <div id="map">
+    </div>
+    <script type="text/javascript">
+        var tiandituLayers; //天地图图层
+        var tiandituSource; //天地图数据源
+
+        var view = new ol.View({
+            projection: ol.proj.get('EPSG:4326'),
+            center: [0, 0], //地图初始中心点
+            minZoom: 2, //最小级别
+            zoom: 4 //地图初始显示级别
+        });
+        //实例化Map对象加载地图
+        var map = new ol.Map({
+            target: 'map', //地图容器div的ID
+            //地图容器中加载的图层
+            layers: tiandituLayers,
+            //地图视图设置
+            view: view
+        });
+        //添加坐标
+        var mousePositionControl = new ol.control.MousePosition({
+            coordinateFormat: ol.coordinate.createStringXY(2),
+            className: 'custom-mouse-position',
+            target: document.getElementById('mouse-position'),
+            undefinedHTML: '&nbsp;'
+        });
+        map.addControl(mousePositionControl);
+
+
+        $("input[type='radio'][name='maps']").get(0).checked = true; //默认选中
+        var select = document.getElementById('tiandituType');
+        select.addEventListener('change', onChange); //添加地图类型选项的事件监听
+        loadTiandituMap(select.value); //默认加载选中类型的地图
+         
+       //天地图数据类型切换处理函数
+        function onChange() {
+            map.removeLayer(tiandituLayers);//移除图层
+            loadTiandituMap(select.value); //加载当前类型的地图数据
+            setMapView([0, 0],4);
+        }
+
+        function loadTiandituMap(type) {
+            //图层类型
+            var layerType = type;
+            //地图投影坐标系
+            var projection = ol.proj.get('EPSG:4326'); 
+            //数据源信息
+            var attribution = new ol.Attribution({
+                html: 'Copyright:&copy; 2015 Tianditu, i-cubed, GeoEye'
+            });
+            //地图范围
+            var extent = [-180, -90, 180, 90];
+            //瓦片大小
+            var tileSize = 256;
+            //瓦片参数原点
+            var origin = [-180, -90];
+            //分辨率数组
+            var resolutions = getResolutions(extent, tileSize);
+            var urlTemplate; //天地图数据服务地址
+            switch (layerType) {
+                case "vec"://天地图矢量数据
+                    urlTemplate = "http://t" + Math.round(Math.random() * 7) + ".tianditu.cn/vec_c/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=c&FORMAT=tiles" + "&TILECOL=" + '{x}' + "&TILEROW=" + '{y}' + "&TILEMATRIX=" + '{z}';
+                    break;
+                case "img": //天地图影像数据
+                    urlTemplate = "http://t" + Math.round(Math.random() * 7) + ".tianditu.cn/img_c/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=c&FORMAT=tiles" + "&TILECOL=" + '{x}' + "&TILEROW=" + '{y}' + "&TILEMATRIX=" + '{z}';
+                    break;
+                case "cva": //天地图矢量注记数据
+                    urlTemplate = "http://t" + Math.round(Math.random() * 7) + ".tianditu.cn/cva_c/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=c&FORMAT=tiles" + "&TILECOL=" + '{x}' + "&TILEROW=" + '{y}' + "&TILEMATRIX=" + '{z}';
+                    break;
+                case "cia": //天地图影像注记数据
+                    urlTemplate = "http://t" + Math.round(Math.random() * 7) + ".tianditu.cn/cia_c/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cia&STYLE=default&TILEMATRIXSET=c&FORMAT=tiles" + "&TILECOL=" + '{x}' + "&TILEROW=" + '{y}' + "&TILEMATRIX=" + '{z}';
+                    break;
+            }
+            
+            //实例化天地图的数据源
+            tiandituSource = new ol.source.TileImage({
+                attributions: [attribution],
+                tileUrlFunction: function (tileCoord, pixelRatio, projection) {
+                    //判断返回的当前级数的行号和列号是否包含在整个地图范围内
+                    if (this.tileGrid != null) {
+                        var tileRange = this.tileGrid.getTileRangeForExtentAndZ(extent, tileCoord[0], tileRange);
+                        if (!tileRange.contains(tileCoord)) {
+                            return;
+                        }
+                    }
+                    var z = tileCoord[0];
+                    var x = tileCoord[1];
+                    var y = parseInt(Math.pow(2, z - 1) - 1 - tileCoord[2]);
+                    return urlTemplate.replace('{z}', z.toString())
+                        .replace('{y}', y.toString())
+                        .replace('{x}', x.toString());
+                },
+                projection: projection, //投影坐标系
+                tileGrid: new ol.tilegrid.TileGrid({
+                    origin: origin, //原点，数组类型，如[0,0],
+                    resolutions: resolutions, //分辨率数组
+                    tileSize: tileSize //瓦片图片大小
+                })
+            });
+            //实例化天地图的图层
+            tiandituLayers = new ol.layer.Tile({
+                source: tiandituSource
+            });
+            map.addLayer(tiandituLayers); //添加天地图图层   
+        }
+
+        //通过范围计算得到地图分辨率数组resolutions
+        function getResolutions(extent, tileSize) {
+            var width = ol.extent.getWidth(extent);
+            var height = ol.extent.getHeight(extent);
+            var maxResolution = (width <= height ? height : width) / (tileSize);//最大分辨率
+            var resolutions = new Array(16);
+            var z;
+            for (var z = 0; z < 16; ++z) {
+                resolutions[z] = maxResolution / Math.pow(2, z);
+            }
+            return resolutions; //返回分辩率数组resolutions
+        }
+
+        /**
+        * 重新设置地图视图
+        * @param {ol.Coordinate} center 中心点
+        * @param {number} zoom 缩放级数
+        */
+        function setMapView(center, zoom) {
+            var view = map.getView(); //获取地图视图
+            view.setCenter(center); //平移地图
+            view.setZoom(zoom); //地图缩放
+        }
+   </script>
+</body>
+</html>
+

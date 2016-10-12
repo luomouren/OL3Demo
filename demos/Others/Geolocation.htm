@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>定位导航</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+    <script src="../../libs/ol/ol.js" type="text/javascript"></script>
+    <!--  引入第三方插件库 -->
+    <script src="../../libs/jquery-1.11.2.min.js" type="text/javascript"></script>
+    <style type="text/css">
+        body,html,div,ul,li,iframe,p,img{
+            border:none;padding:0;margin:0;
+        }
+        #map{
+            width:100%;
+            height:570px;
+        }
+        #menu{
+            width:100%;
+            height:20px;         
+            padding:5px 10px;
+            font-size:14px;
+            font-family:"微软雅黑";
+            left:10px;    
+        }
+        .title{
+            margin:0 15px; 
+        }
+        #container{
+            float:right;
+            position:absolute;
+            width:320px;
+            height:100px; 
+            right:5px;
+            background-color:#4c4e5a;
+            z-index:2000;   /*在地图容器中的层，要设置z-index的值让其显示在地图上层*/    
+            border-width: 10px; /*边缘的宽度*/
+            border-radius: 10px;    /*圆角的大小 */ 
+            border-color: #000 #000 #000 #000;  /*边框颜色*/
+            padding:10px;
+            font-size:14px;
+            font-family:"微软雅黑";
+            color:#ffffff;
+        }
+        code{
+            color:Yellow;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu">
+        <label class="title" for="track">
+            导航定位演示：<input id="track" type="checkbox"/>开启定位
+        </label>
+        <div id="info" class="alert alert-error" style="display: none;"></div>
+    </div> 
+    <div id="map" > 
+        <div id="container">
+            <p>位置精度（position accuracy）: <code id="accuracy"></code></p>
+            <p>海拔高度（altitude）: <code id="altitude"></code></p>
+            <p>海拔精度（altitude accuracy）: <code id="altitudeAccuracy"></code></p>
+            <p>航向（heading）: <code id="heading"></code></p>
+            <p>速度（speed）: <code id="speed"></code></p>
+        </div>
+    </div>
+    <script type="text/javascript">
+
+        var view = new ol.View({
+            center: [0,0], //地图初始中心点
+            minZoom: 2,
+            zoom: 4
+        });
+        //创建Map对象加载地图,默认底图加载MapQuest地图
+        var map = new ol.Map({
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.MapQuest({ layer: 'osm' })
+                })
+            ],
+            target: 'map', //地图容器div的ID
+            view: view
+        });
+
+        /* start====================导航定位演示===================================*/
+        //创建一个定位控件
+        var geolocation = new ol.Geolocation({
+            projection: view.getProjection(), //设置投影参考系
+            //追踪参数
+            trackingOptions: {
+                maximumAge: 10000, //最大周期
+                enableHighAccuracy: true, //启用高精度
+                timeout: 600000  //超时
+            }
+        });
+
+        $('#track').bind('change', function () {
+            geolocation.setTracking(this.checked); //启动位置跟踪
+            if (this.checked) {
+                map.addLayer(featuresOverlay); //添加定位点标注（矢量要素图层）
+            }
+            else {
+                map.removeLayer(featuresOverlay); //移除定位点标注（矢量要素图层）
+            }
+        });
+
+        // 位置变更事件（更新面板的导航位置信息）
+        geolocation.on('change', function () {
+            $('#accuracy').text(geolocation.getAccuracy() + ' [m]');
+            $('#altitude').text(geolocation.getAltitude() + ' [m]');
+            $('#altitudeAccuracy').text(geolocation.getAltitudeAccuracy() + ' [m]');
+            $('#heading').text(geolocation.getHeading() + ' [rad]');
+            $('#speed').text(geolocation.getSpeed() + ' [m/s]');
+        });
+
+        // 定位错误事件处理
+        geolocation.on('error', function (error) {
+            $('#info').html(error.message);
+            $('#info').css('display', '');
+        });
+
+        //精确模式定位点要素（一定分辨率下显示）
+        var accuracyFeature = new ol.Feature();
+            geolocation.on('change:accuracyGeometry', function () {
+                accuracyFeature.setGeometry(geolocation.getAccuracyGeometry());
+        });
+        //定位点要素
+        var positionFeature = new ol.Feature();
+        positionFeature.setStyle(new ol.style.Style({
+            image: new ol.style.Circle({
+                radius: 6,
+                fill: new ol.style.Fill({
+                    color: '#3399CC'
+                }),
+                stroke: new ol.style.Stroke({
+                    color: '#fff',
+                    width: 2
+                })
+            })
+        }));
+        //导航位置变更事件处理
+        geolocation.on('change:position', function () {
+            var coordinates = geolocation.getPosition();
+            positionFeature.setGeometry(coordinates ? new ol.geom.Point(coordinates) : null);         
+            flyLocation(coordinates);//飞行动画模式定位到导航点位点
+        });
+
+        function flyLocation(center) {
+            var duration = 4000; //持续时间（毫秒）
+            var start = +new Date();
+            //移动效果
+            var pan = ol.animation.pan({
+                duration: duration, //设置持续时间
+                source: /** @type {ol.Coordinate} */(view.getCenter()),
+                start: start
+            });
+            //反弹效果
+            var bounce = ol.animation.bounce({
+                duration: duration, //设置持续时间
+                resolution: 4 * view.getResolution(),  //4倍分辨率
+                start: start
+            });
+            map.beforeRender(pan, bounce); //地图渲染前设置动画效果(pan+bounce)         
+            view.setCenter(center); //平移地图
+            view.setZoom(12); //放大地图
+        }
+
+        //创建定位点矢量图层（featuresOverlay）
+        var featuresOverlay = new ol.layer.Vector({
+            source: new ol.source.Vector({
+                features: [accuracyFeature, positionFeature]
+            })
+        });
+        /* end ====================导航定位演示===================================*/
+    </script>
+</body>
+</html>

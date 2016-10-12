@@ -1,0 +1,45 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>加载比例尺控件</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+    <script src="../../libs/ol/ol.js" type="text/javascript" ></script>
+    <style type="text/css">
+        #map{
+            width:100%;
+            height:100%;
+            position:absolute;
+        }
+    </style>
+</head>
+<body>
+    <div id="map" > 
+    </div>
+    <script type="text/javascript">
+        //实例化比例尺控件（ScaleLine）
+        var scaleLineControl = new ol.control.ScaleLine({
+            units: "metric" //设置比例尺单位，degrees、imperial、us、nautical、metric（度量单位）
+        });
+
+        //实例化Map对象加载地图
+        var map = new ol.Map({
+            target: 'map', //地图容器div的ID
+            //地图容器中加载的图层
+            layers: [
+                //加载瓦片图层数据
+                new ol.layer.Tile({
+                    source: new ol.source.OSM() //图层对应数据源，此为加载OpenStreetMap在线瓦片服务数据
+                })
+            ],
+            //地图视图设置
+            view: new ol.View({
+                center: [0, 0], //地图初始中心点
+                zoom: 2  //地图初始显示级别
+            }),
+            //加载控件到地图容器中
+            controls: ol.control.defaults().extend([scaleLineControl])//加载比例尺控件
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>地图打印（导出图片）</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+    <script src="../../libs/ol/ol.js" type="text/javascript"></script>
+    <!--  引入第三方插件库 -->
+    <script src="../../libs/jquery-1.11.2.min.js" type="text/javascript"></script>
+    <style type="text/css">
+        #map{
+            width:100%;
+            height:570px;
+        }
+        #menu{
+            float:left;
+            position:absolute;
+            bottom:10px;
+            z-index:2000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map" > 
+        <div id="menu">
+           <!-- <button id="export">地图导出</button>-->
+            <a id="export-png" class="btn" download="map.png"><i class="icon-download">地图导出(暂支持非IE内核浏览器)</i></a>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        //实例化Map对象加载地图
+        var map = new ol.Map({
+            target: 'map', //地图容器div的ID
+            //地图容器中加载的图层
+            layers: [
+            //加载瓦片图层数据（OSM）
+                new ol.layer.Tile({
+                    source: new ol.source.OSM()
+                })
+            ],
+            //地图视图设置
+            view: new ol.View({
+                center: [12950000, 4860000], //地图初始中心点
+                zoom: 8, //地图初始显示级别
+                minZoom: 6, //最小级别
+                maxZoom: 12 //最大级别
+            })
+        });
+//        //单击地图打印按钮功能
+//        $('#export').onclick = function () {
+//            map.once('postcompose', function (event) {
+//                var canvas = event.context.canvas;
+//                $('#export-png').href = canvas.toDataURL('image/png');
+//            });
+//            map.renderSync();
+//        };
+
+
+        var exportPNGElement = document.getElementById('export-png'); //导出图片功能项
+
+        if ('download' in exportPNGElement) {
+            exportPNGElement.addEventListener('click', function (e) {
+                map.once('postcompose', function (event) {
+                    var canvas = event.context.canvas; //地图渲染容器
+                    exportPNGElement.href = canvas.toDataURL('image/png'); //导出图片
+                });
+                map.renderSync();
+            }, false);
+        } else {
+            alert("浏览器不支持此导出地图图片功能！");
+        }
+
+
+    </script>
+</body>
+</html>

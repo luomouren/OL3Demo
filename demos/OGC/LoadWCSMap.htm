@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>加载WCS服务地图</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+<!--    <script src="../../libs/ol/ol.js" type="text/javascript"></script>-->
+    <script src="../../libs/ol/ol-debug.js" type="text/javascript"></script>
+    <!--  引入扩展封装的WCS数据源的库 -->
+    <script src="../../libs/ol/source/imagewcssource.js" type="text/javascript"></script>
+    <!--  引入第三方插件库 -->
+    <script src="../../libs/jquery-1.11.2.min.js" type="text/javascript"></script>
+    <style type="text/css">
+        body,html,div,ul,li,iframe,p,img{
+            border:none;padding:0;margin:0;
+        }
+        #map{
+            width:100%;
+            height:570px;
+        }
+        #menu{
+            width:100%;
+            height:20px;         
+            padding:5px 0px;
+            font-size:14px;
+            font-family:"微软雅黑";
+            left:10px;    
+        }
+        #menu ul{
+            float:left;
+        }
+        #menu ul li{
+            float:left;
+            list-style:none;
+            margin:0px 15px; 
+        }
+    </style>
+</head>
+<body>
+     <div id="menu">
+        <ul>
+            <li >
+                <label class="checkbox" ><input type="checkbox" name="maps" value="img"/>image WCS(MapGIS WCS)</label>
+            </li>
+        </ul>
+        <div id="mouse-position" class="custom-mouse-position" ></div>
+    </div> 
+    <div id="map" > 
+    </div>
+    <script type="text/javascript">
+        var wcsLayer; //WCS图层数据
+        //地图范围
+        var extent = [-20037508.3427892, -20037508.3427892, 20037508.3427892, 20037508.3427892];
+        //投影坐标系（Web墨卡托）
+        var projection = ol.proj.get('EPSG:3857');
+//        var extent = [-180, -90, 180, 90];
+//        var projection = ol.proj.get('EPSG:4326');
+
+        //数据源信息
+        var attribution = new ol.Attribution({
+            html: 'Tiles &copy; <a href="http://www.mapgis.com/">MapGIS</a>'
+        });
+
+//        //实例化WCS服务图层对象（ol.layer.Image，ol.source.ImageStatic ）
+//        wcsLayer = new ol.layer.Image({
+//            //extent: [7255485.51895572, 1727817.04820845, 15611024.7240842, 7611564.03016553], //数据范围
+//            opacity: 0.7, //图层透明度
+//            attributions:attribution,
+//            source: new ol.source.ImageStatic({
+//                attributions: attribution,
+//                url: 'http://127.0.0.1:6163/igs/rest/ogc/WCSServer/?REQUEST=getcoverage&service=wcs&version=1.0.0&coverage=china:china3857&bbox=-20037508.3427892,-20037508.3427892,20037508.3427892,20037508.3427892&width=4805&height=3062', //WCS服务地址
+//                projection: projection,
+//                imageExtent: extent
+//            })
+//        });
+
+        //实例化WCS服务图层对象（ol.layer.Image，ol.source.ImageWCS ）
+        wcsLayer = new ol.layer.Image({
+            extent: [7255485.51895572, 1727817.04820845, 15611024.7240842, 7611564.03016553], //数据范围
+            opacity: 0.7, //图层透明度
+            attributions: attribution,
+            source: new ol.source.ImageWCS({
+                url: 'http://127.0.0.1:6163/igs/rest/ogc/WCSServer', //WCS服务基地址
+                params: { 'coverage': 'china:china3857' } //图层参数
+            })
+        });
+
+        //实例化Map对象加载地图,默认底图加载Bing地图
+        var map = new ol.Map({
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.BingMaps({
+                        key: 'Ak-dzM4wZjSqTlzveKz5u0d4IQ4bRzVI309GxmkgSVr1ewS6iPSrOvOKhA-CJlm3',
+                        imagerySet: 'Aerial'
+                    })
+                })
+            ],
+            target: 'map', //地图容器div的ID
+            view: new ol.View({
+                projection: projection,
+                //center: ol.extent.getCenter(extent),
+                center: [12000000, 4000000], //地图初始中心点
+                minZoom: 2,
+                zoom: 3
+            })
+        });
+
+        //添加坐标
+        var mousePositionControl = new ol.control.MousePosition({
+            coordinateFormat: ol.coordinate.createStringXY(2),
+            className: 'custom-mouse-position',
+            target: document.getElementById('mouse-position'),
+            undefinedHTML: '&nbsp;'
+        });
+        map.addControl(mousePositionControl);
+
+
+        //通过复选框控制加载与移除WCS服务图层数据
+        $("input[name='maps']")[0].onclick = function () {
+            if ($("input[name='maps']")[0].checked) {
+                map.addLayer(wcsLayer); //加载WCS服务图层数据
+            }
+            else {
+                map.removeLayer(wcsLayer); //移除WCS服务图层数据
+            }
+        };
+    </script>
+</body>
+</html>

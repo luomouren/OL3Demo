@@ -1,0 +1,234 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>绘制保存几何图形</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+    <script src="../../libs/ol/ol.js" type="text/javascript"></script>
+    <!--  引入第三方插件库 -->
+    <script src="../../libs/jquery-1.11.2.min.js" type="text/javascript"></script>
+    <script src="../../libs/jquery-ui-1.11.4/jquery-ui.min.js" type="text/javascript"></script>
+    <link href="../../libs/jquery-ui-1.11.4/jquery-ui.min.css" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        body,html,div,ul,li,iframe,p,img{
+            border:none;padding:0;margin:0;
+        }
+        #map{
+            width:100%;
+            height:570px;
+        }
+        #menu{
+            width:100%;
+            height:20px;         
+            padding:5px 10px;
+            font-size:14px;
+            font-family:"微软雅黑";
+            left:10px;    
+        }
+        #dialog-confirm{
+            font-size:14px;
+            font-family:"微软雅黑";
+        }
+        .ui-widget-header { border: 1px solid #aaaaaa; background: #cccccc url(images/ui-bg_highlight-soft_75_cccccc_1x100.png) 50% 50% repeat-x; color: #222222; font-weight: bold; }
+        .ui-widget, .ui-widget input, .ui-widget select{font-size:14px;font-family:"微软雅黑";}
+        .ui-widget .ui-widget{font-size:14px; font-family:"微软雅黑"; color: #222222;}
+        
+    </style>
+</head>
+<body>
+    <div id="menu">
+          <label>几何图形类型：&nbsp;</label>
+          <select id="type">
+            <option value="Point" selected="selected">点</option>
+            <option value="LineString">线</option>
+            <option value="Polygon">多边形</option>
+          </select>
+    </div> 
+    <div id="dialog-confirm" title="图形属性信息设置">
+        <label>图形类型(geoType):</label>
+        <select id="geoType">
+            <option value="Point" selected="selected" disabled="disabled">点</option>
+            <option value="LineString" disabled="disabled">线</option>
+            <option value="Polygon" disabled="disabled">多边形</option>
+        </select>
+        <br />
+        <label>信息类别(infoType):</label>
+        <select id="infoType">
+            <option value="Point" selected="selected" disabled="disabled" >兴趣点</option>
+            <option value="LineString"  disabled="disabled">道路线</option>
+            <option value="Polygon"  disabled="disabled">高校区域</option>
+        </select>
+        <br />
+        <label>名称(name):</label>
+        <input type="text" value="" id="name" />
+        <br />
+        <label>省市(city):</label>
+        <input type="text" value="武汉市" id="city" />
+    </div>
+    <div id="map" > 
+    </div>
+    <script type="text/javascript">
+        var typeSelect = document.getElementById('type');//绘制类型对象
+        var draw; //绘制对象
+        var geoStr = null; // 当前绘制图形的坐标串
+        var currentFeature = null; //当前绘制的几何要素
+
+        //实例化Map对象加载地图,默认底图加载MapQuest地图
+        var map = new ol.Map({
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.MapQuest({ layer: 'osm' })
+                })
+            ],
+            target: 'map', //地图容器div的ID
+            view: new ol.View({
+                center: [12723048, 3575638], //地图初始中心点
+                minZoom: 2,
+                zoom: 14
+            })
+        });
+
+        //实例化一个矢量图层Vector作为绘制层
+        var vector = new ol.layer.Vector({
+            source: new ol.source.Vector(),
+            style: new ol.style.Style({
+                fill: new ol.style.Fill({
+                    color: 'rgba(255, 255, 255, 0.7)'
+                }),
+                stroke: new ol.style.Stroke({
+                    color: '#0099ff',
+                    width: 2
+                }),
+                image: new ol.style.Circle({
+                    radius: 7,
+                    fill: new ol.style.Fill({
+                        color: '#0099ff'
+                    })
+                })
+            })
+        });
+        map.addLayer(vector); //将绘制层添加到地图容器中
+
+        /**
+        * 根据绘制类型进行交互绘制图形处理
+        */
+        function addInteraction() {
+            var value = typeSelect.value; //绘制类型              
+            //实例化交互绘制类对象并添加到地图容器中
+            draw = new ol.interaction.Draw({
+                source: vector.getSource(), //绘制层数据源
+                type: /** @type {ol.geom.GeometryType} */(value)  //几何图形类型
+            });
+            map.addInteraction(draw);
+            //添加绘制结束事件监听，在绘制结束后保存信息到数据库
+            draw.on('drawend', drawEndCallBack,this);
+        }
+
+        /**
+        * 绘制结束事件的回调函数，
+        * @param {ol.interaction.DrawEvent} evt 绘制结束事件
+        */
+        function drawEndCallBack(evt) {
+            var geoType = $("#type option:selected").val();//绘制图形类型          
+            $("#dialog-confirm").dialog("open"); //打开属性信息设置对话框
+            currentFeature = evt.feature; //当前绘制的要素
+            var geo = currentFeature.getGeometry(); //获取要素的几何信息
+            var coordinates = geo.getCoordinates(); //获取几何坐标
+            //将几何坐标拼接为字符串
+            if (geoType == "Polygon") {
+                geoStr = coordinates[0].join(";"); 
+            }
+            else { 
+                geoStr = coordinates.join(";"); 
+            }          
+        }
+        /**
+        * 提交数据到后台保存
+        * @param {string} geoType 绘制的几何类型
+        * @param {string} geoData 几何数据
+        * @param {string} attData 属性数据
+        */
+        function saveData(geoType,geoData, attData) {
+            //通过ajax请求将数据传到后台文件进行保存处理
+            $.ajax({
+                url: '../DataHandler.ashx', //请求地址
+                type: 'POST',  //请求方式为post
+                data: { 'type': geoType, 'geo': geoData, 'att': attData }, //传入参数 
+                dataType: 'text', //返回数据格式
+                //请求成功完成后要执行的方法  
+                success: function (response) {
+                    alert(response);
+                },
+                error: function (err) {
+                    alert("执行失败");
+                }
+            });
+        }
+
+        /**
+        * 将绘制的几何数据与对话框设置的属性数据提交到后台处理
+        */
+        function submitData() {
+            var geoType = $("#type option:selected").val(); //绘制图形类型
+            var name = $("#name").val(); //名称
+            var city = $("#city").val(); //所属城市
+            var attData = name + "," + city;
+
+            if (geoStr != null) {
+                saveData(geoType, geoStr, attData); //将数据提交到后台处理（保存到数据库中）
+                currentFeature = null;  //置空当前绘制的几何要素
+                geoStr = null; //置空当前绘制图形的geoStr
+            }
+            else {
+                alert("未得到绘制图形几何信息！");
+                vector.getSource().removeFeature(currentFeature); //删除当前绘制图形
+            }
+        }
+
+        /**
+        * 用户更改绘制类型触发的事件.
+        * @param {Event} e 更改事件
+        */
+        typeSelect.onchange = function (e) {
+            map.removeInteraction(draw); //移除绘制图形
+            addInteraction();//添加交互绘制功能控件
+        };
+        addInteraction(); //添加交互绘制功能控件
+      
+        // 初始化信息设置对话框
+        $("#dialog-confirm").dialog(
+            {
+                modal: true,  // 创建模式对话框
+                autoOpen: false, //默认隐藏对话框
+                //对话框打开时默认设置
+                open: function (event, ui) {
+                    $(".ui-dialog-titlebar-close", $(this).parent()).hide(); //隐藏默认的关闭按钮
+                    //根据绘制图形设置对话框中图形类型与信息类别的值
+                    switch (typeSelect.value) {
+                        case "Point":
+                            $("#geoType,#infoType").val("Point");
+                            break;
+                        case "LineString":
+                            $("#geoType,#infoType").val("LineString");
+                            break;
+                        case "Polygon":
+                            $("#geoType,#infoType").val("Polygon");
+                            break;
+                        default:
+                    }
+                },
+                //对话框功能按钮
+                buttons: {
+                    "提交": function () {
+                        submitData(); //提交几何与属性信息到后台处理
+                        $(this).dialog('close'); //关闭对话框
+                    },
+                    "取消": function () {
+                        $(this).dialog('close'); //关闭对话框                     
+                        vector.getSource().removeFeature(currentFeature); //删除当前绘制图形
+                    }
+                }
+            });
+    </script>
+</body>
+</html>

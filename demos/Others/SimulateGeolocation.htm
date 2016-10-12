@@ -1,0 +1,266 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>模拟导航定位</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+    <script src="../../libs/ol/ol.js" type="text/javascript"></script>
+    <!--  引入第三方插件库 -->
+    <script src="../../libs/jquery-1.11.2.min.js" type="text/javascript"></script>
+    <style type="text/css">
+        body,html,div,ul,li,iframe,p,img{
+            border:none;padding:0;margin:0;
+        }
+        #map{
+            width:100%;
+            height:570px;
+        }
+        #menu{
+            width:100%;
+            height:20px;         
+            padding:5px 10px;
+            font-size:14px;
+            font-family:"微软雅黑";
+            left:10px;    
+        }
+        .title{
+            margin:0 15px; 
+        }
+        #container{
+            float:right;
+            position:absolute;
+            width:340px;
+            height:100px; 
+            right:5px;
+            background-color:#4c4e5a;
+            z-index:2000;   /*在地图容器中的层，要设置z-index的值让其显示在地图上层*/    
+            border-width: 10px; /*边缘的宽度*/
+            border-radius: 10px;    /*圆角的大小 */ 
+            border-color: #000 #000 #000 #000;  /*边框颜色*/
+            padding:10px;
+            font-size:14px;
+            font-family:"微软雅黑";
+            color:#ffffff;
+        }
+        code{
+            color:Yellow;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu">
+        <label class="title" for="simulate">
+            模拟导航演示：<button id="simulate">开始导航</button>
+        </label>
+        <div id="info" class="alert alert-error" style="display: none;"></div>
+    </div> 
+    <img id="geolocation_marker" src="../data/geolocation_marker_heading.png" />
+    <div id="map" > 
+        <div id="container">
+            <p>位置点坐标（position）: <code id="position"></code></p>
+            <p>位置精度（position accuracy）: <code id="accuracy"></code></p>
+            <p>当前航向（heading）: <code id="heading"></code></p>
+            <p>当前速度（speed）: <code id="speed"></code></p>
+            <p>采样周期（delta）: <code id="delta"></code></p>
+        </div>
+    </div>
+    <script type="text/javascript">
+
+        var view = new ol.View({
+            center: ol.proj.fromLonLat([5.8713, 45.6452]),
+            minZoom: 2,
+            zoom: 18
+        });
+        //创建Map对象加载地图,默认底图加载MapQuest地图
+        var map = new ol.Map({
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.MapQuest({ layer: 'osm' })
+                })
+            ],
+            target: 'map', 
+            view: view
+        });
+
+         /* start ===================模拟导航演示===================================*/
+
+        // 定义用LineString存储轨迹点的地理位置信息（XYZM，Z维度用来存储角度/M则为时间维度）
+        var positions = new ol.geom.LineString([],/** @type {ol.geom.GeometryLayout} */('XYZM'));
+        // 创建导航定位控件（Geolocation Control）
+        var geolocation = new ol.Geolocation(/** @type {olx.GeolocationOptions} */({
+            projection: view.getProjection(), //投影坐标系
+            //追踪参数
+            trackingOptions: {
+                maximumAge: 10000, //最大周期
+                enableHighAccuracy: true, //启用高精度
+                timeout: 600000  //超时
+            }
+        }));
+        //创建导航定位标识的标注，添加到地图中
+        var markerEl = document.getElementById('geolocation_marker');
+        var marker = new ol.Overlay({
+            positioning: 'center-center',
+            element: markerEl,
+            stopEvent: false
+        });
+        map.addOverlay(marker);
+
+        var deltaMean = 500; // 地理位置变化采样周期（MS）
+        // 定位位置变化监听事件（添加定位点并更新轨迹面板信息）
+        geolocation.on('change', function (evt) {
+            var position = geolocation.getPosition();
+            var accuracy = geolocation.getAccuracy();
+            var heading = geolocation.getHeading() || 0;
+            var speed = geolocation.getSpeed() || 0;
+            var m = Date.now();
+            addPosition(position, heading, m, speed); //添加定位点
+            var coords = positions.getCoordinates();
+            var len = coords.length;
+            if (len >= 2) {
+                deltaMean = (coords[len - 1][3] - coords[0][3]) / (len - 1);
+            }
+            //更新信息面板的定位点相关信息
+            $('#position').text(position[0].toFixed(2) + ', ' + position[1].toFixed(2));
+            $('#accuracy').text(accuracy);
+            $('#altitude').text(geolocation.getAltitude() + ' [m]');
+            $('#altitudeAccuracy').text(geolocation.getAltitudeAccuracy() + ' [m]');
+            $('#heading').text(Math.round(radToDeg(heading)) + '&deg;');
+            $('#speed').text((speed * 3.6).toFixed(1) + ' km/h');
+            $('#delta').text(Math.round(deltaMean) + 'ms');
+       
+        });
+        // 导航控件错误事件
+        geolocation.on('error', function () {
+            alert('geolocation error');
+        });
+
+        // 弧度转为度
+        function radToDeg(rad) {
+            return rad * 360 / (Math.PI * 2);
+        }
+        // 度转为弧度
+        function degToRad(deg) {
+            return deg * Math.PI * 2 / 360;
+        }
+        // 负值模式
+        function mod(n) {
+            return ((n % (2 * Math.PI)) + (2 * Math.PI)) % (2 * Math.PI);
+        }
+        //添加定位点
+        function addPosition(position, heading, m, speed) {
+            var x = position[0];
+            var y = position[1];
+            var fCoords = positions.getCoordinates();
+            var previous = fCoords[fCoords.length - 1];
+            var prevHeading = previous && previous[2];
+            if (prevHeading) {
+                var headingDiff = heading - mod(prevHeading);
+                // 强制变换角度（旋转角度变化不超过180度）
+                if (Math.abs(headingDiff) > Math.PI) {
+                    var sign = (headingDiff >= 0) ? 1 : -1;
+                    headingDiff = -sign * (2 * Math.PI - Math.abs(headingDiff));
+                }
+                heading = prevHeading + headingDiff;
+            }
+            positions.appendCoordinate([x, y, heading, m]);
+            //只保留20个最后的坐标
+            positions.setCoordinates(positions.getCoordinates().slice(-20));
+        }
+
+        var previousM = 0;
+        // 地图渲染前改变中心与旋转角度
+        map.beforeRender(function (map, frameState) {
+            if (frameState !== null) {
+                // 利用地理位置变化采样周期平稳变换过渡
+                var m = frameState.time - deltaMean * 1.5;
+                m = Math.max(m, previousM);
+                previousM = m;
+                // 沿模拟轨迹设置当前定位点的position
+                var c = positions.getCoordinateAtM(m, true);
+                var view = frameState.viewState;
+                if (c) {
+                    view.center = getCenterWithHeading(c, -c[2], view.resolution);//设置地图中心点
+                    view.rotation = -c[2];//设置地图旋转角度
+                    marker.setPosition(c);//设置导航定位点的标注位置
+                }
+            }
+            return true; // Force animation to continue
+        });
+
+        // 重新计算得到地图中心点（ by putting the given coordinates at 3/4 from the top or  the screen）
+        function getCenterWithHeading(position, rotation, resolution) {
+            var size = map.getSize();
+            var height = size[1];
+            return [
+                position[0] - Math.sin(rotation) * height * resolution * 1 / 4,
+                position[1] + Math.cos(rotation) * height * resolution * 1 / 4
+              ];
+        }
+
+        // 地图的postcompose 事件回调函数
+        function render() {
+            map.render();//渲染地图
+        }
+
+        // 模拟轨迹数据加载（本地的json格式数据）
+        var simulationData;  
+        var simulationCacheData;//缓存数据
+        var client = new XMLHttpRequest();
+        client.open('GET', '../data/geolocation-orientation.json');
+        client.onload = function () {
+            simulationData = JSON.parse(client.responseText).data;
+            simulationCacheData = JSON.parse(client.responseText).data;
+        };
+        client.send();
+        //导航功能按钮的单击事件，实现导航功能
+        var simulateBtn = document.getElementById('simulate');
+        simulateBtn.addEventListener('click', function () {
+            if (simulationData == null || simulationData == undefined) {
+                alert("未成功加载模拟数据！");
+                return;
+            }
+            else if (simulationData.length == 0) {//判断当前的模拟轨迹数组是否有数据
+                simulationData = simulationCacheData;
+            }
+            var coordinates = simulationData; //模拟轨迹点数组
+            var first = coordinates.shift(); //删除数组第一个元素并返回第一个元素
+            simulatePositionChange(first); //执行模拟位置变换功能
+            var prevDate = first.timestamp; //默认第一个点位点的时间戳
+            //定位功能函数
+            function geolocate() {
+                var position = coordinates.shift(); //删除数组第一个元素并返回第一个元素
+                if (!position) {
+                    simulateBtn.disabled = ''; //开启功能按钮
+                    return;
+                }
+                var newDate = position.timestamp; //当前定位点时间戳
+                simulatePositionChange(position); //执行模拟位置变换功能
+                //创建一个定时器，每隔一定时间执行定位功能函数
+                window.setTimeout(function () {
+                    prevDate = newDate;
+                    geolocate();
+                }, (newDate - prevDate) / 0.5);
+            }
+            geolocate(); //执行定位功能
+            map.on('postcompose', render); //为地图容器添加postcompose事件监听
+            map.render(); //渲染地图
+            simulateBtn.disabled = 'disabled'; //禁用功能按钮
+        }, false);
+
+        //模拟位置变换功能函数
+        function simulatePositionChange(position) {
+            var coords = position.coords;
+            geolocation.set('accuracy', coords.accuracy);
+            geolocation.set('heading', degToRad(coords.heading));
+            var position_ = [coords.longitude, coords.latitude];
+            var projectedPosition = ol.proj.transform(position_, 'EPSG:4326', 'EPSG:3857');
+            geolocation.set('position', projectedPosition);
+            geolocation.set('speed', coords.speed);
+            geolocation.changed();
+        }
+
+        /* end ===================模拟导航演示===================================*/
+
+    </script>
+</body>
+</html>

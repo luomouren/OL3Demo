@@ -1,0 +1,90 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>加载图层探查控件</title>
+    <link href="../../libs/ol/ol.css" rel="stylesheet" type="text/css" />
+    <script src="../../libs/ol/ol.js" type="text/javascript"></script>
+    <!-- 引入第三方插件库,jQuery1.9.1以上版本插件 -->
+    <script src="../../libs/jquery-1.11.2.min.js" type="text/javascript"></script>
+    <style type="text/css">
+        #map{
+            width:100%;
+            height:100%;
+            position:absolute;
+        }
+    </style>
+</head>
+<body>
+    <div id="map" ></div>
+    <script type="text/javascript">
+        
+        var key = 'Ak-dzM4wZjSqTlzveKz5u0d4IQ4bRzVI309GxmkgSVr1ewS6iPSrOvOKhA-CJlm3'; //Bing地图的key
+        //实例化BingMap的道路图层
+        var roads = new ol.layer.Tile({
+            source: new ol.source.BingMaps({ key: key, imagerySet: 'Road' })
+        });
+        //实例化BingMap的影像图层
+        var imagery = new ol.layer.Tile({
+            source: new ol.source.BingMaps({ key: key, imagerySet: 'Aerial' })
+        });
+        //实例化Map对象加载地图
+        var map = new ol.Map({
+            layers: [roads,imagery],
+            target: 'map',
+            view: new ol.View({
+                center: ol.proj.fromLonLat([-109, 46.5]),
+                zoom: 6
+            })
+        });
+
+        /*
+          下面代码通过jQuery插件的方法实现对图层的裁剪
+        */
+        var radius = 75; //圆半径
+        //通过keydown事件实现键盘Up与Down改变圆半径
+        $(document).keydown(function (evt) { //按键事件，document节点绑定不管元素是否获得焦点都会触发
+            if (evt.which === 38) { //指示按了哪个键或按钮（38为Up），当按下Up键时半径扩大5个像素
+                radius = Math.min(radius + 5, 150);
+                map.render();//渲染地图
+            } else if (evt.which === 40) {  //指示按了哪个键或按钮（40为Down），当按下Down键时半径减小5个像素
+                radius = Math.max(radius - 5, 25);
+                map.render(); //渲染地图
+            }
+        });
+
+        // 每次鼠标移动时获取当前像素位置
+        var mousePosition = null;
+        $(map.getViewport()).on('mousemove', function (evt) { //通过jQuery的on方法为地图视图绑定mousemove事件，其中通过getViewport方法得到地图视图元素
+            mousePosition = map.getEventPixel(evt.originalEvent); //获取当前鼠标位置的像素
+            map.render(); //重新渲染地图
+        }).on('mouseout', function () {
+            mousePosition = null; //置空鼠标位置信息对象
+            map.render(); //渲染地图
+        });
+
+        // 影像图层绘制（渲染）前进行一部分裁剪
+        imagery.on('precompose', function (event) {
+            var ctx = event.context; //影像图层画布
+            var pixelRatio = event.frameState.pixelRatio; //像素比
+            ctx.save();
+            ctx.beginPath();
+            if (mousePosition) {
+                // 只显示以鼠标当前位置为圆心的一个圆圈
+                ctx.arc(mousePosition[0] * pixelRatio, mousePosition[1] * pixelRatio,
+                    radius * pixelRatio, 0, 2 * Math.PI); //设置画布区域为一个圆
+                ctx.lineWidth = 5* pixelRatio;  //圆边框的宽，设置为5个像素单位
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)'; // 圆边框样式（颜色）
+                ctx.stroke();
+            }
+            ctx.clip();//裁剪画布
+        });
+        // 影像图层绘制后还原画布背景（ the canvas context）
+        imagery.on('postcompose', function (event) {
+            var ctx = event.context;
+            ctx.restore();//还原画布
+        });
+
+    </script>
+</body>
+</html>
